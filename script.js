@@ -5,58 +5,69 @@ const img = new Image(); // used to load image from <input> and draw to canvas
 let speech = window.speechSynthesis;
 let voice;
 
+
+let wrapper = {
+  canvas_fields: {
+    BAR_TOP: 50,
+    BAR_BOTTOM: 50,
+    MARGIN_LEFT: .2,
+    MARGIN_RIGHT: .2
+  },
+  clear: (event) => {
+    let canvas = document.getElementById('user-image');
+    let context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  },
+  drawImage: (image, bg) => {
+    let canvas = document.getElementById('user-image');
+    let context = canvas.getContext('2d');
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = bg;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    let dims = getDimmensions(canvas.width, canvas.height, image.width, image.height);
+    context.drawImage(image, dims.startX, dims.startY, dims.width, dims.height);
+  },
+  drawText: (bottom_text, top_text, color, font) => {
+    let canvas = document.getElementById('user-image');
+    let context = canvas.getContext('2d');
+  
+    let offset_X = canvas.width * wrapper.canvas_fields.MARGIN_LEFT;
+    let constraint_X = canvas.width * (1 - wrapper.canvas_fields.MARGIN_LEFT - wrapper.canvas_fields.MARGIN_RIGHT);
+  
+    context.fillStyle = color;
+    context.font = font;
+    context.fillText(top_text, offset_X, wrapper.canvas_fields.BAR_TOP, constraint_X);
+    context.fillText(bottom_text, offset_X, canvas.height-wrapper.canvas_fields.BAR_BOTTOM, constraint_X);
+  },
+  redraw: (image, bottom_text, top_text) => {
+    let canvas = document.getElementById('user-image');
+    let context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  
+    let dims = getDimmensions(canvas.width, canvas.height, img.width, img.height);
+    context.drawImage(img, dims.startX, dims.startY, dims.width, dims.height);
+  }
+}
+
 // Fires whenever the img object loads a new image (such as with img.src =)
 img.addEventListener('load', () => {
-  // TODO
-/**
-  ------toggle the relevant buttons (submit, clear, and read text buttons) by disabling or enabling them as needed  
- */
-  console.log('load fired');
-
-  let canvas = document.getElementById('user-image');
-  let context = canvas.getContext('2d');
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = 'black';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  
-  let dims = getDimmensions(canvas.width, canvas.height, img.width, img.height);
-  context.drawImage(img, dims.startX, dims.startY, dims.width, dims.height);
-  // Some helpful tips:
-  // - Fill the whole Canvas with black first to add borders on non-square images, then draw on top
-  // - Clear the form when a new image is selected
-  // - If you draw the image to canvas here, it will update as soon as a new image is selected
+  wrapper.drawImage(img, 'black');
 });
 
-let imgInput = document.getElementById('image-input');
-
-imgInput.addEventListener('change', (event) => {
-  console.log('change fired');
+document.getElementById('image-input').addEventListener('change', (event) => {
   let files = event.target.files;
   let url = URL.createObjectURL(files[0]);
   img.src = url;
 });
 
-/*
-on submit, generate your meme by grabbing the text in the two inputs with ids text-top and text-bottom,
-and adding the relevant text to the canvas (note: you should still be able to add text to the canvas without an image uploaded)
-toggle relevant buttons
-*/
-
-let form = document.getElementById('generate-meme');
-
-form.addEventListener('submit', (event) => {
+document.getElementById('generate-meme').addEventListener('submit', (event) => {
   event.preventDefault();
-
   let top_text = document.getElementById('text-top').value;
   let bottom_text = document.getElementById('text-bottom').value;
-  let canvas = document.getElementById('user-image');
-  let context = canvas.getContext('2d');
-
-  context.fillStyle = 'black';
-  context.font = 'sans serif 32px bold'
-  context.fillText(top_text, 50, 50, canvas.width);
-  context.fillText(bottom_text, 50, canvas.height-50, canvas.width);
+  wrapper.drawText(bottom_text, top_text, 'white', 'bold 32px "Fira Sans", sans-serif');
   
   event.target.querySelector('button[type=\'submit\']').disabled = true;
   event.target.querySelector('button[type=\'reset\']').disabled = false;
@@ -64,23 +75,16 @@ form.addEventListener('submit', (event) => {
   document.getElementById('voice-selection').disabled = false;
 });
 
-let button_reset = document.querySelector('button[type=\'reset\']');
-
-button_reset.addEventListener('click', (event) => {
-  let canvas = document.getElementById('user-image');
-  let context = canvas.getContext('2d');
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  
+document.querySelector('button[type=\'reset\']').addEventListener('click', (event) => {
+  wrapper.clear();
   document.querySelector('button[type=\'submit\']').disabled = false;
   document.querySelector('button[type=\'reset\']').disabled = true;
   document.querySelector('button[type=\'button\']').disabled = true;
   document.getElementById('voice-selection').disabled = false;
 });
 
-let button_readText = document.querySelector('button[type=\'button\']');
 
-button_readText.addEventListener('click', () => {
+document.querySelector('button[type=\'button\']').addEventListener('click', () => {
   let top_text = new SpeechSynthesisUtterance(document.getElementById('text-top').value);
   top_text.voice = voice;
   let bottom_text = new SpeechSynthesisUtterance(document.getElementById('text-bottom').value);
@@ -88,25 +92,34 @@ button_readText.addEventListener('click', () => {
 
   let slider_volume = document.querySelector('#volume-group > input[type=\'range\']');
 
-  // cast to number
   let volume = Number(slider_volume.value);
-
-  // scale volume to interval [0, 1]
-  let volume_max = slider_volume.max;
+  let volume_max = Number(slider_volume.max);
   top_text.volume = (volume / volume_max);
   bottom_text.volume = (volume / volume_max);
 
   speech.speak(top_text);
   speech.speak(bottom_text);
+});
 
-  
+document.querySelector('#volume-group > input[type=\'range\']').addEventListener('change', (event) => {
+  let slider_volume = document.querySelector('#volume-group > input[type=\'range\']');
+  let volume = Number(slider_volume.value);
+  let volume_icon = document.querySelector('#volume-group > img');
+  if(volume == 0) {
+    volume_icon.src='icons/volume-level-0.svg'
+  }else if(volume <= 33) {
+    volume_icon.src='icons/volume-level-1.svg'
+  }else if(volume <= 66) {
+    volume_icon.src='icons/volume-level-2.svg'
+  }else {
+    volume_icon.src='icons/volume-level-3.svg'
+  }
 });
 
 let voiceSelect = document.getElementById('voice-selection');
-let voiceOptions = speech.getVoices();
 
 speech.addEventListener('voiceschanged', () => {
-  voiceOptions = speech.getVoices();
+  let voiceOptions = speech.getVoices();
   voiceOptions.forEach(voice => {
     let option;
     if (voice.default) {
