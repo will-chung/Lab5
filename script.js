@@ -82,9 +82,9 @@ let button_readText = document.querySelector('button[type=\'button\']');
 
 button_readText.addEventListener('click', () => {
   let top_text = new SpeechSynthesisUtterance(document.getElementById('text-top').value);
-  top_text.voice = speech.voice["Zuzana"];
+  top_text.voice = voice;
   let bottom_text = new SpeechSynthesisUtterance(document.getElementById('text-bottom').value);
-  top_text.voice = speech.voice["Zuzana"];
+  bottom_text.voice = voice;
 
   let slider_volume = document.querySelector('#volume-group > input[type=\'range\']');
 
@@ -108,7 +108,6 @@ let voiceOptions = speech.getVoices();
 speech.addEventListener('voiceschanged', () => {
   voiceOptions = speech.getVoices();
   voiceOptions.forEach(voice => {
-    console.log(voice);
     let option;
     if (voice.default) {
       option = new Option(voice.name, voice.name, true, false);
@@ -120,11 +119,13 @@ speech.addEventListener('voiceschanged', () => {
 });
 
 voiceSelect.addEventListener('change', (event) => {
-  console.log(event.target.value);
-  voice = event.target[event.target.value];
+  let new_voice = event.target.value;
+  speech.getVoices().forEach((val, index) => {
+    voice = new_voice === val.name ? val : voice;
+  });
+  console.log(voice);
 });
 
-console.log(voiceSelect);
 
 /**
  * Takes in the dimensions of the canvas and the new image, then calculates the new
