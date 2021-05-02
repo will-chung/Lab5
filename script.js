@@ -40,6 +40,9 @@ let wrapper = {
 // Fires whenever the img object loads a new image (such as with img.src =)
 img.addEventListener('load', () => {
   wrapper.drawImage(img, 'black');
+  let top_text = document.getElementById('text-top').value;
+  let bottom_text = document.getElementById('text-bottom').value;
+  wrapper.drawText(bottom_text, top_text, 'white', 'bold 40px "Fira Sans", sans-serif');
 });
 
 document.getElementById('image-input').addEventListener('change', (event) => {
