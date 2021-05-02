@@ -2,9 +2,11 @@
 
 const img = new Image(); // used to load image from <input> and draw to canvas
 
+let canvas = document.getElementById('user-image');
+let context = canvas.getContext('2d');
+
 let speech = window.speechSynthesis;
 let voice;
-
 
 let wrapper = {
   canvas_fields: {
@@ -14,41 +16,24 @@ let wrapper = {
     MARGIN_RIGHT: .2
   },
   clear: (event) => {
-    let canvas = document.getElementById('user-image');
-    let context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
   },
   drawImage: (image, bg) => {
-    let canvas = document.getElementById('user-image');
-    let context = canvas.getContext('2d');
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = bg;
     context.fillRect(0, 0, canvas.width, canvas.height);
-    let dims = getDimmensions(canvas.width, canvas.height, image.width, image.height);
+    let dims = getDimensions(canvas.width, canvas.height, image.width, image.height);
     context.drawImage(image, dims.startX, dims.startY, dims.width, dims.height);
   },
   drawText: (bottom_text, top_text, color, font) => {
-    let canvas = document.getElementById('user-image');
-    let context = canvas.getContext('2d');
-  
-    let offset_X = canvas.width * wrapper.canvas_fields.MARGIN_LEFT;
-    let constraint_X = canvas.width * (1 - wrapper.canvas_fields.MARGIN_LEFT - wrapper.canvas_fields.MARGIN_RIGHT);
-  
+    context.textAlign = 'center';
     context.fillStyle = color;
     context.font = font;
-    context.fillText(top_text, offset_X, wrapper.canvas_fields.BAR_TOP, constraint_X);
-    context.fillText(bottom_text, offset_X, canvas.height-wrapper.canvas_fields.BAR_BOTTOM, constraint_X);
-  },
-  redraw: (image, bottom_text, top_text) => {
-    let canvas = document.getElementById('user-image');
-    let context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = 'black';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-  
-    let dims = getDimmensions(canvas.width, canvas.height, img.width, img.height);
-    context.drawImage(img, dims.startX, dims.startY, dims.width, dims.height);
+    context.strokeStyle = 'black';
+    context.lineWidth = 4;
+    context.strokeText(top_text, canvas.width/2, 40 + 10, canvas.width);
+    context.strokeText(bottom_text, canvas.width/2, canvas.height - 20, canvas.width);
+    context.fillText(top_text, canvas.width/2, 40 + 10, canvas.width);
+    context.fillText(bottom_text, canvas.width/2, canvas.height - 20, canvas.width);
   }
 }
 
@@ -61,13 +46,14 @@ document.getElementById('image-input').addEventListener('change', (event) => {
   let files = event.target.files;
   let url = URL.createObjectURL(files[0]);
   img.src = url;
+  img.alt = files[0].name;
 });
 
 document.getElementById('generate-meme').addEventListener('submit', (event) => {
   event.preventDefault();
   let top_text = document.getElementById('text-top').value;
   let bottom_text = document.getElementById('text-bottom').value;
-  wrapper.drawText(bottom_text, top_text, 'white', 'bold 32px "Fira Sans", sans-serif');
+  wrapper.drawText(bottom_text, top_text, 'white', 'bold 40px "Fira Sans", sans-serif');
   
   event.target.querySelector('button[type=\'submit\']').disabled = true;
   event.target.querySelector('button[type=\'reset\']').disabled = false;
@@ -83,8 +69,17 @@ document.querySelector('button[type=\'reset\']').addEventListener('click', (even
   document.getElementById('voice-selection').disabled = false;
 });
 
+function selectVoice() {
+  let selection = voiceSelect.value;
+  speech.getVoices().forEach(currVoice => {
+    if (currVoice.name == selection)
+      voice = currVoice;
+  });
+}
 
 document.querySelector('button[type=\'button\']').addEventListener('click', () => {
+  selectVoice();
+
   let top_text = new SpeechSynthesisUtterance(document.getElementById('text-top').value);
   top_text.voice = voice;
   let bottom_text = new SpeechSynthesisUtterance(document.getElementById('text-bottom').value);
@@ -119,26 +114,23 @@ document.querySelector('#volume-group > input[type=\'range\']').addEventListener
 let voiceSelect = document.getElementById('voice-selection');
 
 speech.addEventListener('voiceschanged', () => {
+  // clear
+  for (let i = 0; i < voiceSelect.options.length; i++) {
+    voiceSelect.remove(i);
+  }
+
+  // repopulate
   let voiceOptions = speech.getVoices();
   voiceOptions.forEach(voice => {
     let option;
     if (voice.default) {
-      option = new Option(voice.name, voice.name, true, false);
+      option = new Option(voice.name + ' (' + voice.lang + ') -- DEFAULT', voice.name, true, false);
     } else {
-      option = new Option(voice.name, voice.name, false, false);
+      option = new Option(voice.name + ' (' + voice.lang + ')', voice.name, false, false);
     }
     voiceSelect.appendChild(option);
   });
 });
-
-voiceSelect.addEventListener('change', (event) => {
-  let new_voice = event.target.value;
-  speech.getVoices().forEach((val, index) => {
-    voice = new_voice === val.name ? val : voice;
-  });
-  console.log(voice);
-});
-
 
 /**
  * Takes in the dimensions of the canvas and the new image, then calculates the new
@@ -151,13 +143,13 @@ voiceSelect.addEventListener('change', (event) => {
  * and also the starting X and starting Y coordinate to be used when you draw the new image to the
  * Canvas. These coordinates align with the top left of the image.
  */
-function getDimmensions(canvasWidth, canvasHeight, imageWidth, imageHeight) {
+function getDimensions(canvasWidth, canvasHeight, imageWidth, imageHeight) {
   let aspectRatio, height, width, startX, startY;
 
   // Get the aspect ratio, used so the picture always fits inside the canvas
   aspectRatio = imageWidth / imageHeight;
 
-  // If the apsect ratio is less than 1 it's a verical image
+  // If the aspect ratio is less than 1 it's a vertical image
   if (aspectRatio < 1) {
     // Height is the max possible given the canvas
     height = canvasHeight;
